@@ -83,10 +83,25 @@ curl -s -L "$BASE/config.inc.php" -o phpmyadmin/config.inc.php
 curl -s -L "$BASE/httpd-mai.conf" -o "$PREFIX/etc/apache2/httpd.conf"
 }
 
-install_menu(){
-curl -s -L "$BASE/mai" -o "$PREFIX/bin/mai"
+echo "Installing MAI command..."
+
+# Download file
+curl -fsSL https://raw.githubusercontent.com/aripin-ilham/mai-aamp/main/mai -o mai.tmp
+
+# Fix Windows CRLF otomatis
+tr -d '\r' < mai.tmp > mai.fixed
+
+# Paksa shebang Termux
+echo "#!/data/data/com.termux/files/usr/bin/bash" > "$PREFIX/bin/mai"
+tail -n +2 mai.fixed >> "$PREFIX/bin/mai"
+
+# Permission
 chmod +x "$PREFIX/bin/mai"
-}
+
+# Cleanup
+rm -f mai.tmp mai.fixed
+
+echo "MAI command installed safely."
 
 boot
 check_disk

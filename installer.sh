@@ -1,136 +1,142 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-clear
-
 PREFIX=/data/data/com.termux/files/usr
 HTDOCS=/storage/emulated/0/htdocs
-REPO=https://raw.githubusercontent.com/aripin-ilham/mai-aamp/main
 
-banner(){
+# ===== COLOR =====
+RED="\033[1;31m"
+GREEN="\033[1;32m"
+CYAN="\033[1;36m"
+YELLOW="\033[1;33m"
+RESET="\033[0m"
+
+# ===== BOOT ANIMATION =====
+boot_animation() {
 clear
-echo "==========================================="
-echo "        AAMP MAI INSTALLER v3.0"
-echo "==========================================="
+echo -e "${CYAN}"
+echo "Initializing Cyber Core..."
+sleep 0.6
+echo "Loading Neon Modules..."
+sleep 0.6
+echo "Bypassing Firewall..."
+sleep 1
+echo -e "${GREEN}Access Granted.${RESET}"
+sleep 1
+clear
 }
 
-loading(){
-echo -ne "Installing AAMP MAI... "
-for i in {1..40}; do
-    echo -ne "█"
+# ===== SPINNER =====
+spinner() {
+  local pid=$!
+  local spin='-\|/'
+  local i=0
+  while kill -0 $pid 2>/dev/null; do
+    i=$(( (i+1) %4 ))
+    printf "\r${CYAN}Processing ${spin:$i:1}${RESET}"
+    sleep .1
+  done
+  printf "\r"
+}
+
+# ===== PROGRESS BAR =====
+progress_bar() {
+  for i in {0..100}; do
+    filled=$((i/2))
+    empty=$((50-filled))
+    printf "\rInstalling AAMP MAI... ["
+    printf "%0.s█" $(seq 1 $filled)
+    printf "%0.s " $(seq 1 $empty)
+    printf "] %3d%%" "$i"
     sleep 0.03
-done
-echo ""
+  done
+  echo ""
 }
 
-banner
-read -p "Yakin ingin install AAMP MAI? (y/n): " confirm
-[ "$confirm" != "y" ] && exit
+# ===== INSTALL FUNCTION =====
+install_aamp() {
 
-loading
+boot_animation
 
-# Silent update
-pkg update -y > /dev/null 2>&1
-pkg upgrade -y > /dev/null 2>&1
+echo -e "${CYAN}Installing packages...${RESET}"
 
-# Install packages silently
-pkg install php php-apache mariadb curl unzip -y > /dev/null 2>&1
+(
+pkg update -y >/dev/null 2>&1
+pkg upgrade -y >/dev/null 2>&1
+pkg install php-apache mariadb unzip -y >/dev/null 2>&1
+) & spinner
 
-# Storage setup
-termux-setup-storage > /dev/null 2>&1
+progress_bar
+
+termux-setup-storage >/dev/null 2>&1
+
 mkdir -p $HTDOCS
 
-# Download dashboard
-cd $HTDOCS || exit
+echo "<?php phpinfo(); ?>" > $HTDOCS/phpinfo.php
 
-curl -fsSL $REPO/web/index.php -o index.php > /dev/null 2>&1
-curl -fsSL $REPO/web/phpinfo.php -o phpinfo.php > /dev/null 2>&1
-curl -fsSL $REPO/web/phpmyadmin.zip -o phpmyadmin.zip > /dev/null 2>&1
-
-# Extract phpMyAdmin
-unzip -o phpmyadmin.zip > /dev/null 2>&1
-
-PMFOLDER=$(ls -d phpMyAdmin* 2>/dev/null | head -n 1)
-if [ -n "$PMFOLDER" ]; then
-    mv "$PMFOLDER" phpmyadmin
-fi
-
-rm -f phpmyadmin.zip
-
-# Create phpMyAdmin config
-cat > phpmyadmin/config.inc.php <<EOF
-<?php
-\$cfg['blowfish_secret'] = 'mai_secure_key_123';
-\$i = 0;
-\$i++;
-\$cfg['Servers'][\$i]['auth_type'] = 'cookie';
-\$cfg['Servers'][\$i]['host'] = 'localhost';
-\$cfg['Servers'][\$i]['connect_type'] = 'tcp';
-\$cfg['Servers'][\$i]['AllowNoPassword'] = true;
-EOF
-
-# Replace httpd.conf
-curl -fsSL $REPO/httpd_mai.conf -o $PREFIX/etc/apache2/httpd.conf > /dev/null 2>&1
-
-# Create global command mai
-cat > $PREFIX/bin/mai <<'EOF'
+# ===== CREATE MENU =====
+cat > $PREFIX/bin/mai << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
 
-apache_status(){
-pgrep httpd >/dev/null && echo -e "Apache : \033[32mRUNNING\033[0m" || echo -e "Apache : \033[31mSTOPPED\033[0m"
+GREEN="\033[1;32m"
+RED="\033[1;31m"
+RESET="\033[0m"
+
+status() {
+echo "================ STATUS SERVICE ================"
+pgrep mysqld >/dev/null && echo -e "MySQL  : ${GREEN}RUNNING${RESET}" || echo -e "MySQL  : ${RED}STOPPED${RESET}"
+pgrep httpd >/dev/null && echo -e "Apache : ${GREEN}RUNNING${RESET}" || echo -e "Apache : ${RED}STOPPED${RESET}"
+echo "================================================"
 }
 
-mysql_status(){
-pgrep mysqld >/dev/null && echo -e "MySQL  : \033[32mRUNNING\033[0m" || echo -e "MySQL  : \033[31mSTOPPED\033[0m"
-}
-
-menu(){
+while true; do
 clear
-echo "========== AAMP MAI CONTROL =========="
-apache_status
-mysql_status
-echo "======================================="
-echo "1) Start Apache"
-echo "2) Start MySQL"
-echo "3) Start All"
-echo "4) Stop All"
-echo "5) Restart All"
+status
+echo "============== AAMP CONTROL MENU =============="
+echo "1) Aktifkan Apache"
+echo "2) Aktifkan MySQL"
+echo "3) Aktifkan Semua"
+echo "4) Stop Semua"
+echo "5) Uninstall AAMP"
 echo "6) Exit"
-echo "======================================="
-read -p "Pilih: " opt
+echo "================================================"
+read -p "Pilih: " pilih
 
-case $opt in
+case $pilih in
 1) apachectl start ;;
 2) mysqld >/dev/null 2>&1 & ;;
 3) mysqld >/dev/null 2>&1 & sleep 2; apachectl start ;;
-4) pkill mysqld >/dev/null 2>&1; apachectl stop ;;
-5) pkill mysqld >/dev/null 2>&1; apachectl stop; mysqld >/dev/null 2>&1 & sleep 2; apachectl start ;;
+4) pkill mysqld; apachectl stop ;;
+5)
+   pkill mysqld
+   apachectl stop
+   pkg uninstall php-apache mariadb -y
+   rm -rf /storage/emulated/0/htdocs
+   rm /data/data/com.termux/files/usr/bin/mai
+   echo "AAMP Removed."
+   exit
+   ;;
 6) exit ;;
-*) menu ;;
+*) echo "Invalid"; sleep 1 ;;
 esac
-
-sleep 2
-menu
-}
-
-menu
+done
 EOF
 
 chmod +x $PREFIX/bin/mai
 
-# Init MariaDB
-mariadb-install-db > /dev/null 2>&1
+echo -e "${GREEN}"
+echo "========================================"
+echo "      AAMP MAI Installed Successfully"
+echo "========================================"
+echo -e "${RESET}"
 
-clear
-echo "==========================================="
-echo "      INSTALASI SELESAI 🚀"
-echo "==========================================="
-echo "Dashboard  : http://localhost:8080"
-echo "phpMyAdmin : http://localhost:8080/phpmyadmin"
-echo ""
-echo "Ketik: mai"
-echo "Untuk masuk ke Control Menu"
-echo "==========================================="
+sleep 1
 
-sleep 3
+echo "Launching MAI Menu..."
+sleep 1
+mai
 
 rm -- "$0"
+}
+
+# ===== START =====
+install_aamp

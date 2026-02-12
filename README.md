@@ -54,22 +54,6 @@ Didesain untuk Termux Android dengan tampilan interaktif dan menu kontrol servic
 
 ---
 
-## 📦 Struktur Repository
-
-```
-mai-aamp/
-│
-├── install.sh
-├── httpd_mai.conf
-│
-└── web/
-    ├── index.php
-    ├── phpinfo.php
-    └── phpmyadmin.zip
-```
-
----
-
 ## ⚡ Cara Install
 
 Jalankan di Termux:

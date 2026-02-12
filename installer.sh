@@ -1,142 +1,136 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-PREFIX=/data/data/com.termux/files/usr
-HTDOCS=/storage/emulated/0/htdocs
+export TERM=xterm-256color
 
-# ===== COLOR =====
-RED="\033[1;31m"
-GREEN="\033[1;32m"
+USER="aripin-ilham"
+REPO="mai-aamp"
+BRANCH="main"
+BASE="https://raw.githubusercontent.com/$USER/$REPO/$BRANCH"
+
 CYAN="\033[1;36m"
-YELLOW="\033[1;33m"
+GREEN="\033[1;32m"
+RED="\033[1;31m"
 RESET="\033[0m"
 
-# ===== BOOT ANIMATION =====
-boot_animation() {
 clear
-echo -e "${CYAN}"
-echo "Initializing Cyber Core..."
-sleep 0.6
-echo "Loading Neon Modules..."
-sleep 0.6
-echo "Bypassing Firewall..."
-sleep 1
-echo -e "${GREEN}Access Granted.${RESET}"
-sleep 1
-clear
+
+# =========================
+# Boot Animation
+# =========================
+boot(){
+  clear
+  echo -e "${CYAN}"
+  echo "======================================="
+  echo "        AAMP MAI INSTALLER v6"
+  echo "======================================="
+  echo -e "${RESET}"
+  sleep 1
 }
 
-# ===== SPINNER =====
-spinner() {
+# =========================
+# Spinner
+# =========================
+spinner(){
   local pid=$!
-  local spin='-\|/'
+  local spin='|/-\'
   local i=0
+  tput civis
   while kill -0 $pid 2>/dev/null; do
     i=$(( (i+1) %4 ))
-    printf "\r${CYAN}Processing ${spin:$i:1}${RESET}"
-    sleep .1
+    printf "\r${CYAN}Processing %s${RESET}" "${spin:$i:1}"
+    sleep 0.1
   done
   printf "\r"
+  tput cnorm
 }
 
-# ===== PROGRESS BAR =====
-progress_bar() {
-  for i in {0..100}; do
-    filled=$((i/2))
-    empty=$((50-filled))
-    printf "\rInstalling AAMP MAI... ["
-    printf "%0.s█" $(seq 1 $filled)
-    printf "%0.s " $(seq 1 $empty)
-    printf "] %3d%%" "$i"
-    sleep 0.03
-  done
-  echo ""
+# =========================
+# Disk Check
+# =========================
+check_disk(){
+  FREE=$(df /data | awk 'NR==2 {print $4}')
+  FREE_MB=$((FREE/1024))
+
+  if [ "$FREE_MB" -lt 800 ]; then
+    echo -e "${RED}Disk space too low! Minimum 800MB required.${RESET}"
+    exit 1
+  fi
+
+  echo -e "${GREEN}Disk OK: ${FREE_MB}MB free${RESET}"
 }
 
-# ===== INSTALL FUNCTION =====
-install_aamp() {
+# =========================
+# RAM Detect
+# =========================
+detect_ram(){
+  RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  RAM_MB=$((RAM_KB/1024))
 
-boot_animation
+  echo -e "${GREEN}Detected RAM: ${RAM_MB}MB${RESET}"
+}
 
-echo -e "${CYAN}Installing packages...${RESET}"
-
+# =========================
+# Install Packages (Silent)
+# =========================
+install_packages(){
 (
-pkg update -y >/dev/null 2>&1
-pkg upgrade -y >/dev/null 2>&1
-pkg install php-apache mariadb unzip -y >/dev/null 2>&1
-) & spinner
-
-progress_bar
-
-termux-setup-storage >/dev/null 2>&1
-
-mkdir -p $HTDOCS
-
-echo "<?php phpinfo(); ?>" > $HTDOCS/phpinfo.php
-
-# ===== CREATE MENU =====
-cat > $PREFIX/bin/mai << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-
-GREEN="\033[1;32m"
-RED="\033[1;31m"
-RESET="\033[0m"
-
-status() {
-echo "================ STATUS SERVICE ================"
-pgrep mysqld >/dev/null && echo -e "MySQL  : ${GREEN}RUNNING${RESET}" || echo -e "MySQL  : ${RED}STOPPED${RESET}"
-pgrep httpd >/dev/null && echo -e "Apache : ${GREEN}RUNNING${RESET}" || echo -e "Apache : ${RED}STOPPED${RESET}"
-echo "================================================"
+  pkg update -y >/dev/null 2>&1
+  pkg upgrade -y >/dev/null 2>&1
+  pkg install php-apache mariadb curl unzip -y >/dev/null 2>&1
+) &
+spinner
 }
 
-while true; do
-clear
-status
-echo "============== AAMP CONTROL MENU =============="
-echo "1) Aktifkan Apache"
-echo "2) Aktifkan MySQL"
-echo "3) Aktifkan Semua"
-echo "4) Stop Semua"
-echo "5) Uninstall AAMP"
-echo "6) Exit"
-echo "================================================"
-read -p "Pilih: " pilih
+# =========================
+# Download Files
+# =========================
+download_files(){
 
-case $pilih in
-1) apachectl start ;;
-2) mysqld >/dev/null 2>&1 & ;;
-3) mysqld >/dev/null 2>&1 & sleep 2; apachectl start ;;
-4) pkill mysqld; apachectl stop ;;
-5)
-   pkill mysqld
-   apachectl stop
-   pkg uninstall php-apache mariadb -y
-   rm -rf /storage/emulated/0/htdocs
-   rm /data/data/com.termux/files/usr/bin/mai
-   echo "AAMP Removed."
-   exit
-   ;;
-6) exit ;;
-*) echo "Invalid"; sleep 1 ;;
-esac
-done
-EOF
+  termux-setup-storage >/dev/null 2>&1
 
-chmod +x $PREFIX/bin/mai
+  mkdir -p /storage/emulated/0/htdocs
+  cd /storage/emulated/0/htdocs || exit
 
-echo -e "${GREEN}"
-echo "========================================"
-echo "      AAMP MAI Installed Successfully"
-echo "========================================"
-echo -e "${RESET}"
+  echo -e "${CYAN}Downloading Web Files...${RESET}"
 
-sleep 1
+  curl -s -L "$BASE/web/index.php" -o index.php
+  curl -s -L "$BASE/web/phpinfo.php" -o phpinfo.php
+  curl -s -L "$BASE/web/phpmyadmin.zip" -o phpmyadmin.zip
 
-echo "Launching MAI Menu..."
-sleep 1
-mai
+  unzip -o phpmyadmin.zip >/dev/null 2>&1
+  mv phpMyAdmin* phpmyadmin
+  rm phpmyadmin.zip
 
-rm -- "$0"
+  # config.inc.php dari root repo
+  curl -s -L "$BASE/config.inc.php" -o phpmyadmin/config.inc.php
+
+  # httpd-mai.conf dari root repo
+  curl -s -L "$BASE/httpd-mai.conf" -o $PREFIX/etc/apache2/httpd.conf
 }
 
-# ===== START =====
-install_aamp
+# =========================
+# Install MAI Menu
+# =========================
+install_menu(){
+  curl -s -L "$BASE/mai" -o $PREFIX/bin/mai
+  chmod +x $PREFIX/bin/mai
+}
+
+# =========================
+# MAIN
+# =========================
+boot
+check_disk
+detect_ram
+
+echo -e "${CYAN}Installing Packages...${RESET}"
+install_packages
+
+download_files
+install_menu
+
+echo ""
+echo -e "${GREEN}AAMP MAI Installed Successfully.${RESET}"
+echo -e "${CYAN}Type: mai${RESET}"
+echo -e "${CYAN}Open: http://localhost:8080${RESET}"
+echo ""

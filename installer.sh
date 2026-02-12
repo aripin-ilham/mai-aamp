@@ -170,4 +170,5 @@ rm -- "$0"
 echo "Masuk ke menu MAI..."
 sleep 1
 
+
 mai

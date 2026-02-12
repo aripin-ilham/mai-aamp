@@ -11,7 +11,7 @@
 ## 🖥 Preview Dashboard
 
 <p align="center">
-  <img src="assets/dashboard.png" width="700" alt="MAI Dashboard Preview">
+  <img src="assets/Screenshot_2026-02-12-20-39-20-236-edit_com.android.chrome.jpg" width="700" alt="MAI Dashboard Preview">
 </p>
 
 Cyber Neon Dashboard dengan:

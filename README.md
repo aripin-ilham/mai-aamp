@@ -59,8 +59,8 @@ Didesain untuk Termux Android dengan tampilan interaktif dan menu kontrol servic
 Jalankan di Termux:
 
 ```bash
-pkg update && pkg install curl -y
-curl -fsSL https://raw.githubusercontent.com/aripin-ilham/mai-aamp/main/install.sh | bash
+pkg update && pkg installer curl -y
+curl -fsSL https://raw.githubusercontent.com/aripin-ilham/mai-aamp/main/installer.sh | bash
 ```
 
 ---

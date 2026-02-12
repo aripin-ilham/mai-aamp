@@ -1,0 +1,95 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+CYAN="\e[36m"
+RESET="\e[0m"
+
+check_mysql() {
+  if pgrep -f mysqld >/dev/null || pgrep -f mariadbd >/dev/null; then
+    echo -e "${GREEN}RUNNING${RESET}"
+  else
+    echo -e "${RED}STOPPED${RESET}"
+  fi
+}
+
+check_apache() {
+  if pgrep -f httpd >/dev/null; then
+    echo -e "${GREEN}RUNNING${RESET}"
+  else
+    echo -e "${RED}STOPPED${RESET}"
+  fi
+}
+
+stop_mysql() {
+  if pgrep -f mysqld >/dev/null; then
+    pkill mysqld 2>/dev/null
+  fi
+
+  if pgrep -f mariadbd >/dev/null; then
+    pkill mariadbd 2>/dev/null
+  fi
+
+  sleep 1
+}
+
+while true; do
+  clear
+
+  MYSQL_STATUS=$(check_mysql)
+  APACHE_STATUS=$(check_apache)
+
+  echo -e "${CYAN}========== STATUS SERVICE ==========${RESET}"
+  echo -e "MySQL  : $MYSQL_STATUS"
+  echo -e "Apache : $APACHE_STATUS"
+  echo -e "${CYAN}=====================================${RESET}"
+  echo
+  echo -e "${YELLOW}========= AAMP CONTROL MENU =========${RESET}"
+  echo "1) Start Apache"
+  echo "2) Start MySQL"
+  echo "3) Start Semua"
+  echo "4) Stop Apache"
+  echo "5) Stop MySQL"
+  echo "6) Stop Semua"
+  echo "7) Exit"
+  echo
+  read -p "Pilih: " pilih
+
+  case $pilih in
+    1)
+      apachectl start >/dev/null 2>&1
+      sleep 1
+      ;;
+    2)
+      mysqld >/dev/null 2>&1 &
+      sleep 2
+      ;;
+    3)
+      mysqld >/dev/null 2>&1 &
+      sleep 2
+      apachectl start >/dev/null 2>&1
+      sleep 1
+      ;;
+    4)
+      apachectl stop >/dev/null 2>&1
+      sleep 1
+      ;;
+    5)
+      stop_mysql
+      sleep 1
+      ;;
+    6)
+      stop_mysql
+      apachectl stop >/dev/null 2>&1
+      sleep 1
+      ;;
+    7)
+      exit 0
+      ;;
+    *)
+      echo "Pilihan tidak valid"
+      sleep 1
+      ;;
+  esac
+done
